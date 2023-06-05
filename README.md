@@ -71,13 +71,15 @@ _✨ 推文订阅推送插件 ✨_
 
 申请 [twitter api](https://developer.twitter.com/zh-cn/docs/twitter-ads-api/getting-started) 权限
 
-生成 Bearer Token
+生成并记录 [Bearer Token](https://developer.twitter.com/en/portal/dashboard)
+
+[![pCPufJ0.png](https://s1.ax1x.com/2023/06/05/pCPufJ0.png)](https://imgse.com/i/pCPufJ0)
  
 在 nonebot2 项目的`.env`文件中添加下表中的必填配置
 
 | 配置项 | 必填 | 默认值 | 说明 |
 |:-----:|:----:|:----:|:----:|
-| bearer_token | 是 | 无 | api token |
+| bearer_token | 是 | 无 | Bearer Token |
 | twitter_proxy | 否 | 无 | proxy |
 | command_priority | 否 | 10 | 命令优先级 |
 
@@ -90,5 +92,8 @@ _✨ 推文订阅推送插件 ✨_
 | 推主列表 | 无 | 否 | 群聊/私聊 | 展示列表 |
 | 推特推送关闭 | 群管 | 否 | 群聊/私聊 | 关闭推送 |
 | 推特推送开启 | 群管 | 否 | 群聊/私聊 | 开启推送 |
+### 效果图
+[![pCPuhWV.png](https://s1.ax1x.com/2023/06/05/pCPuhWV.png)](https://imgse.com/i/pCPuhWV)
+[![pCPu4zT.png](https://s1.ax1x.com/2023/06/05/pCPu4zT.png)](https://imgse.com/i/pCPu4zT)
 ### 注意事项
 1.消息为合并转发发送，存在延迟和发送失败的可能

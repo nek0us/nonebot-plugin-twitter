@@ -126,8 +126,9 @@ async def get_status(type_list: str,l_list: list, l_num: str, user_id: str,since
             else:
                 pripath.write_text(json.dumps(l_list))
             # 清除垃圾
+            await asyncio.sleep(50)
             for path in res["path"]:
-                os.unlink(path)
+                os.unlink(path) 
                 os.unlink(path+".jpg")
     except Exception as e:
         pass
@@ -148,14 +149,14 @@ async def get_tweet_for_id(id: int,r18: bool,name: str):
     if tweet.data.possibly_sensitive and not r18:
         logger.info(f"{name} 的推文 {str(id)} 为r18，根据配置跳过")
         raise ValueError("该条为r18，跳过")
-    
+    username = await get_user_name(name)
     tweet_json = tweet.includes
     task = []
     # 逐个判断是照片还是视频
     task_res = []
     task_res.append(MessageSegment.node_custom(
         user_id=2854196310,
-        nickname=name,
+        nickname=username,
         content=Message(tweet.data.text)
     ))
     if tweet_json:
@@ -226,11 +227,18 @@ async def get_video(url: str) -> str:
     return path
         
 async def get_id(name: str) -> str:
-    '''return user_id from user_name'''
+    '''return user_id from name'''
     try:
         return str(client.get_user(username=name).data.id)
     except Exception as e:
         return "未找到"    
+    
+async def get_user_name(name) -> str:
+    '''return user_name from name'''
+    try:
+        return client.get_user(username=name).data.name
+    except Exception as e:
+        return "未找到name" 
     
 save = on_command("关注推主",block=True,priority=config_dev.command_priority)
 @save.handle()
@@ -266,7 +274,8 @@ async def save_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg: Message 
             pri_list[str(event.user_id)] = {"status":"on"}
         pri_list[str(event.user_id)][user_id] = [data[0],since_id,True]
         pripath.write_text(json.dumps(pri_list))
-    await matcher.finish(f"订阅 {data[0]} 完成")
+    username = await get_user_name(data[0])
+    await matcher.finish(f"id:{data[0]}\nname:{username}\n订阅成功")
         
 
 delete = on_command("取关推主",block=True,priority=config_dev.command_priority)
@@ -314,11 +323,15 @@ async def follow_list_handle(bot:Bot,event: MessageEvent,matcher: Matcher):
         data = json.loads(pripath.read_text("utf8"))[str(event.user_id)]
     del data["status"]
     name_list = [data[x][0] for x in data]
+    username_list = []
+    for x in name_list:
+        username_list.append(await get_user_name(x))
+    
     res = [
         MessageSegment.node_custom(
-            user_id=2854196310, nickname="推主id", content=Message(x)
+            user_id=2854196310, nickname=username, content=Message(name)
         )
-        for x in name_list
+        for name,username in zip(name_list,username_list)
     ]
     bots = nonebot.get_adapter(Adapter).bots
     for bot in bots:
