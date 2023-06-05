@@ -14,24 +14,24 @@ except Exception:
     __version__ = None
 
 class Config(BaseModel):
-    Bearer_Token: Optional[str]
-    Proxy: Optional[str]
+    bearer_token: Optional[str] = ""
+    twitter_proxy: Optional[str] = ""
     command_priority: int = 10
     plugin_enabled: bool = True
     
-    @validator("Bearer_Token")
+    @validator("bearer_token")
     def check_bearer_token(cls,v):
-        if isinstance(str,v):
-            logger.info("Bearer_Token 读取成功")
+        if isinstance(v,str):
+            logger.info("bearer_token 读取成功")
             return v
-    @validator("Proxy")
+    @validator("twitter_proxy")
     def check_proxy(cls,v):
-        if isinstance(str,v):
-            logger.info("Proxy 读取成功")
+        if isinstance(v,str):
+            logger.info("twitter_proxy 读取成功")
             return v
         
     @validator("command_priority")
     def check_command_priority(cls,v):
-        if isinstance(str,v):
+        if isinstance(v,int) and v >= 1:
             logger.info("command_priority 读取成功")
             return v
