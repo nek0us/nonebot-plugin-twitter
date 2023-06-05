@@ -185,7 +185,7 @@ def msg_type(user_id:int, task: str,name: str):
                                           content=Message(MessageSegment.video(f"file:///{task}")))        
         
 async def get_pic(url: str) -> str:
-    path = Path() / "data" / "twitter" / "cache" /  url.split('/').pop()
+    path = Path() / "data" / "twitter" / "cache" /  f"{str(random.randint(1, 1000))}.jpg"
     path = f"{os.getcwd()}/{str(path)}"
     if config_dev.twitter_proxy:
         async with AsyncClient(proxies=f"http://{config_dev.twitter_proxy}") as client:
@@ -205,7 +205,7 @@ async def get_pic(url: str) -> str:
     return path
 
 async def get_video(url: str) -> str:
-    path = Path() / "data" / "twitter" / "cache" /  f"{str(random.randint(1, 100))}.mp4"
+    path = Path() / "data" / "twitter" / "cache" /  f"{str(random.randint(1, 1000))}.mp4"
     path = f"{os.getcwd()}/{str(path)}"
     if config_dev.twitter_proxy:
         async with AsyncClient(proxies=f"http://{config_dev.twitter_proxy}") as client:
