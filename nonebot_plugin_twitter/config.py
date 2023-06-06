@@ -18,6 +18,7 @@ class Config(BaseModel):
     twitter_proxy: Optional[str] = ""
     command_priority: int = 10
     plugin_enabled: bool = True
+    twitter_debug: bool = False
     
     @validator("bearer_token")
     def check_bearer_token(cls,v):
@@ -34,4 +35,10 @@ class Config(BaseModel):
     def check_command_priority(cls,v):
         if isinstance(v,int) and v >= 1:
             logger.info("command_priority 读取成功")
+            return v
+    
+    @validator("twitter_debug")
+    def check_twitter_debug(cls,v):
+        if isinstance(v,bool):
+            logger.info("twitter_debug 开启成功")
             return v

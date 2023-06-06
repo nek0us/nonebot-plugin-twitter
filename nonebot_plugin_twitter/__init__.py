@@ -14,7 +14,7 @@ from nonebot.plugin import PluginMetadata
 from pathlib import Path
 import json
 import random
-from httpx import AsyncClient
+from httpx import AsyncClient,Client
 import asyncio
 import tweepy
 from .config import Config,__version__
@@ -74,6 +74,46 @@ if config_dev.plugin_enabled:
             "http":config_dev.twitter_proxy,
             "https":config_dev.twitter_proxy
         }
+        logger.info(f"已读取 twitter proxy {client.session.proxies}")
+    
+    # Debug
+    if config_dev.twitter_debug:
+        try:
+            logger.debug("连通性测试")
+            if config_dev.twitter_proxy:
+                logger.debug("twitter proxy 测试")
+                with Client(proxies=f"http://{config_dev.twitter_proxy}") as client_test:
+                    res = client_test.get("https://twitter.com/",headers=header)
+                    if res.status_code == 200 or res.status_code == 302:
+                        logger.debug(f"连通正常：{res.status_code}")
+                    else:
+                        logger.debug(f"连通异常：{res.status_code}")
+            else:
+                logger.debug("twitter 直连 测试")
+                with Client() as client_test:
+                    res = client_test.get("https://twitter.com/",headers=header)
+                    if res.status_code == 200 or res.status_code == 302:
+                        logger.debug(f"连通正常：{res.status_code}")
+                    else:
+                        logger.debug(f"连通异常：{res.status_code}")
+        except Exception as e:
+            logger.debug(f"连通测试异常：{e}")
+                    
+        try:
+            logger.debug("获取推文测试")
+            tweet_test = client.get_tweet(id=1665797367747026948,
+                            media_fields="duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,alt_text,variants".split(
+                                ","),
+                            expansions=[
+                                'entities.mentions.username',
+                                'attachments.media_keys',
+                            ],
+                    
+                    tweet_fields=["possibly_sensitive"])
+            if tweet_test.data:
+                logger.debug("获取推文测试成功")
+        except Exception as e:
+            logger.debug(f"获取推文异常：{e}")
     
     @scheduler.scheduled_job("interval",minutes=3,id="twitter",misfire_grace_time=180)
     async def now_twitter():
@@ -126,7 +166,7 @@ async def get_status(type_list: str,l_list: list, l_num: str, user_id: str,since
             else:
                 pripath.write_text(json.dumps(l_list))
             # 清除垃圾
-            await asyncio.sleep(50)
+            await asyncio.sleep(80)
             for path in res["path"]:
                 os.unlink(path) 
                 os.unlink(path+".jpg")

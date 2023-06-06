@@ -81,7 +81,10 @@ _✨ 推文订阅推送插件 ✨_
 |:-----:|:----:|:----:|:----:|
 | bearer_token | 是 | 无 | Bearer Token |
 | twitter_proxy | 否 | 无 | proxy |
+| twitter_debug | 否 | False | debug模式 |
 | command_priority | 否 | 10 | 命令优先级 |
+
+[![pCPq2Hs.png](https://s1.ax1x.com/2023/06/06/pCPq2Hs.png)](https://imgse.com/i/pCPq2Hs)
 
 ## 🎉 使用
 ### 指令表
@@ -96,4 +99,7 @@ _✨ 推文订阅推送插件 ✨_
 [![pCPuhWV.png](https://s1.ax1x.com/2023/06/05/pCPuhWV.png)](https://imgse.com/i/pCPuhWV)
 [![pCPu4zT.png](https://s1.ax1x.com/2023/06/05/pCPu4zT.png)](https://imgse.com/i/pCPu4zT)
 ### 注意事项
-1.消息为合并转发发送，存在延迟和发送失败的可能
+1.推主id：
+[![pCPMu36.png](https://s1.ax1x.com/2023/06/05/pCPMu36.png)](https://imgse.com/i/pCPMu36)
+
+2.消息为合并转发发送，存在延迟和发送失败的可能

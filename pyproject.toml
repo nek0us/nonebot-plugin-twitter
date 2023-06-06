@@ -1,6 +1,6 @@
 [project]
 name = "nonebot-plugin-twitter"
-version = "0.0.5"
+version = "0.0.6"
 description = "NoneBot2 plugin for twitter"
 authors = [
     {name = "nek0us", email = "nekouss@gmail.com"},
