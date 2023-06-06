@@ -71,7 +71,7 @@ _✨ 推文订阅推送插件 ✨_
 
 申请 [twitter api](https://developer.twitter.com/zh-cn/docs/twitter-ads-api/getting-started) 权限
 
-生成并记录 [Bearer Token](https://developer.twitter.com/en/portal/dashboard)
+创建一个 Project ，生成并记录 API Key 和 [Bearer Token](https://developer.twitter.com/en/portal/dashboard)
 
 [![pCPufJ0.png](https://s1.ax1x.com/2023/06/05/pCPufJ0.png)](https://imgse.com/i/pCPufJ0)
  
