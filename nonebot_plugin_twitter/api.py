@@ -48,7 +48,7 @@ async def get_user_newtimeline(user_name:str,since_id: str = "0") -> str:
                         
             if since_id == "0":
                 if new_line == []:
-                    new_line.append("0")
+                    new_line.append("1")
                 else:
                     new_line = [str(max(map(int,new_line)))]
             if new_line == []:
