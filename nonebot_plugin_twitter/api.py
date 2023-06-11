@@ -21,10 +21,10 @@ async def get_user_info(user_name:str) -> dict:
             result["user_name"] = user_name
             soup = BeautifulSoup(res.text,"html.parser")
             result["screen_name"] = soup.find_all('a', class_='profile-card-fullname')[0].next
-            result["bio"] = soup.find_all('p')[0].text
+            result["bio"] = match[0].text if (match := soup.find_all('p')) else ""
         else:
             result["status"] = False
-        
+
     return result
 
 async def get_user_newtimeline(user_name:str,since_id: str = "0") -> str:
