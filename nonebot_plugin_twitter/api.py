@@ -47,7 +47,10 @@ async def get_user_newtimeline(user_name:str,since_id: str = "0") -> str:
                         new_line.append(tweet_id)
                         
             if since_id == "0":
-                new_line = [str(max(map(int,new_line)))]
+                if new_line == []:
+                    new_line.append("0")
+                else:
+                    new_line = [str(max(map(int,new_line)))]
             if new_line == []:
                 new_line = ["not found"]
         else:
