@@ -20,7 +20,7 @@ async def get_user_info(user_name:str) -> dict:
             result["status"] = True
             result["user_name"] = user_name
             soup = BeautifulSoup(res.text,"html.parser")
-            result["screen_name"] = soup.find_all('a', class_='profile-card-fullname')[0].next
+            result["screen_name"] = match[0].text if (match := soup.find_all('a', class_='profile-card-fullname')) else ""
             result["bio"] = match[0].text if (match := soup.find_all('p')) else ""
         else:
             result["status"] = False
