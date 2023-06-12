@@ -317,16 +317,27 @@ async def twitter_status_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg
     twitter_list = json.loads(dirpath.read_text("utf8"))
     try:
         if isinstance(event,GroupMessageEvent):
-            if arg.extract_plain_text() == "开启":
-                for user_name in twitter_list:
-                    twitter_list[user_name]["group"][str(event.group_id)]["status"] = True
-            elif arg.extract_plain_text() == "关闭":
-                for user_name in twitter_list:
-                    twitter_list[user_name]["group"][str(event.group_id)]["status"] = False
+            for user_name in twitter_list:
+                if str(event.group_id) in twitter_list[user_name]["group"]:
+                    if arg.extract_plain_text() == "开启":
+                        twitter_list[user_name]["group"][str(event.group_id)]["status"] = True
+                    elif arg.extract_plain_text() == "关闭":
+                        twitter_list[user_name]["group"][str(event.group_id)]["status"] = False
+                    else:
+                        await matcher.finish("错误指令")
+        else:
+            for user_name in twitter_list:
+                if str(event.user_id) in twitter_list[user_name]["private"]:
+                    if arg.extract_plain_text() == "开启":
+                        twitter_list[user_name]["private"][str(event.user_id)]["status"] = True
+                    elif arg.extract_plain_text() == "关闭":
+                        twitter_list[user_name]["private"][str(event.user_id)]["status"] = False
+                    else:
+                        await matcher.finish("错误指令")
         dirpath.write_text(json.dumps(twitter_list))
         await matcher.finish(f"推送已{arg.extract_plain_text()}")
     except FinishedException:
         pass
-    except:
-        await matcher.finish("未关注任何推主")
+    except Exception as e:
+        await matcher.finish(f"异常:{e}")
 
