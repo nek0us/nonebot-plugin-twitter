@@ -73,7 +73,7 @@ async def get_tweet(user_name:str,tweet_id: str = "0") -> dict:
             result["status"] = True
             soup = BeautifulSoup(res.text,"html.parser")
             # text
-            result["text"] = soup.find_all('div', class_='tweet-content media-body')[0].text
+            result["text"] = match[0].text if (match := soup.find_all('div', class_='tweet-content media-body')) else ""
             # pic
             if pic_list := soup.find_all('a', class_='still-image'):
                 result["pic_url_list"] = [x.attrs["href"] for x in pic_list]
