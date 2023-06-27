@@ -118,11 +118,12 @@ async def get_status(user_name,twitter_list):
             else:
                 task = []
                 task_res = []
-                task_res.append(MessageSegment.node_custom(
-                    user_id=config_dev.twitter_qq,
-                    nickname=twitter_list[user_name]["screen_name"],
-                    content=Message(tweet_info["text"])
-                ))
+                for x in tweet_info["text"]:
+                    task_res.append(MessageSegment.node_custom(
+                        user_id=config_dev.twitter_qq,
+                        nickname=twitter_list[user_name]["screen_name"],
+                        content=Message(x)
+                    ))
                 
                 if tweet_info["pic_url_list"]:
                     for url in tweet_info["pic_url_list"]:
