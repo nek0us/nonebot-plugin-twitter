@@ -51,7 +51,7 @@ web_list += website_list
 with Client(proxies=config_dev.twitter_proxy) as client:
     for url in web_list:
         try:
-            res = client.get(url)
+            res = client.get(f"{url}/elonmusk")
             if res.status_code == 200:
                 logger.info(f"website: {url} ok!")
                 config_dev.twitter_url = url
@@ -75,14 +75,16 @@ if config_dev.plugin_enabled:
     dirpath.touch()
     if not dirpath.stat().st_size:
         dirpath.write_text("{}")
-
-    @scheduler.scheduled_job("interval",minutes=3,id="twitter",misfire_grace_time=180)
-    async def now_twitter():
-        twitter_list = json.loads(dirpath.read_text("utf8"))
-        twitter_list_task = [
-            get_status(user_name, twitter_list) for user_name in twitter_list
-        ]
-        asyncio.gather(*twitter_list_task)
+    if not config_dev.twitter_url:
+        logger.debug(f"website 推文服务器为空，跳过推文定时检索")
+    else:
+        @scheduler.scheduled_job("interval",minutes=3,id="twitter",misfire_grace_time=180)
+        async def now_twitter():
+            twitter_list = json.loads(dirpath.read_text("utf8"))
+            twitter_list_task = [
+                get_status(user_name, twitter_list) for user_name in twitter_list
+            ]
+            asyncio.gather(*twitter_list_task)
 
         
 def msg_type(user_id:int, task: str,name: str):
@@ -148,6 +150,10 @@ async def get_status(user_name,twitter_list):
                         if twitter_list[user_name]["group"][group_num]["r18"] == False and tweet_info["r18"] == True:
                             logger.info(f"根据r18设置，群 {group_num} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")
                             continue
+                        if twitter_list[user_name]["group"][group_num]["media"] == True and tweet_info["media"] == False:
+                            logger.info(f"根据媒体设置，群 {group_num} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")
+                            continue
+                        
                         for bot in bots:
                             try:
                                 await bots[bot].send_group_forward_msg(group_id=int(group_num), messages=task_res)
@@ -163,6 +169,10 @@ async def get_status(user_name,twitter_list):
                         if twitter_list[user_name]["private"][qq]["r18"] == False and tweet_info["r18"] == True:
                             logger.info(f"根据r18设置，qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")   
                             continue
+                        if twitter_list[user_name]["private"][qq]["media"] == True and tweet_info["media"] == False:
+                            logger.info(f"根据媒体设置，qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")   
+                            continue
+                        
                         for bot in bots:
                             try:
                                 await bots[bot].send_private_forward_msg(user_id=int(qq), messages=task_res)
@@ -188,6 +198,8 @@ async def get_status(user_name,twitter_list):
 save = on_command("关注推主",block=True,priority=config_dev.command_priority)
 @save.handle()
 async def save_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg: Message = CommandArg()):
+    if not config_dev.twitter_url:
+        await matcher.finish("website 推文服务器访问失败，请检查连通性或代理")
     data = []
     if " " in arg.extract_plain_text():
         data = arg.extract_plain_text().split(" ")
@@ -208,7 +220,8 @@ async def save_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg: Message 
                 "group":{
                     str(event.group_id):{
                         "status":True,
-                        "r18":True if data[1]=='r18' else False
+                        "r18":True if 'r18' in data[1:] else False,
+                        "media":True if '媒体' in data[1:] else False
                     }
                 },
                 "private":{}
@@ -216,7 +229,8 @@ async def save_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg: Message 
         else:
             twitter_list[data[0]]["group"][str(event.group_id)] = {
                         "status":True,
-                        "r18":True if data[1]=='r18' else False
+                        "r18":True if 'r18' in data[1:] else False,
+                        "media":True if '媒体' in data[1:] else False
                     }
     else:
         if data[0] not in twitter_list:
@@ -225,14 +239,16 @@ async def save_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg: Message 
                 "private":{
                     str(event.user_id):{
                         "status":True,
-                        "r18":True if data[0]=='r18' else False
+                        "r18":True if 'r18' in data[1:] else False,
+                        "media":True if '媒体' in data[1:] else False
                     }
                 }
             }
         else:
             twitter_list[data[0]]["private"][str(event.user_id)] = {
                         "status":True,
-                        "r18":True if data[1]=='r18' else False
+                        "r18":True if 'r18' in data[1:] else False,
+                        "media":True if '媒体' in data[1:] else False
                     }
             
     twitter_list[data[0]]["since_id"] = tweet_id
@@ -284,7 +300,7 @@ async def follow_list_handle(bot:Bot,event: MessageEvent,matcher: Matcher):
                 msg += [
                     MessageSegment.node_custom(
                         user_id=config_dev.twitter_qq, nickname=twitter_list[user_name]["screen_name"], content=Message(
-                            f"{user_name}  {'r18' if twitter_list[user_name]['group'][str(event.group_id)]['r18'] else ''}"
+                            f"{user_name}  {'r18' if twitter_list[user_name]['group'][str(event.group_id)]['r18'] else ''}  {'媒体' if twitter_list[user_name]['group'][str(event.group_id)]['media'] else ''}"
                             )
                     )
                 ]
@@ -295,7 +311,7 @@ async def follow_list_handle(bot:Bot,event: MessageEvent,matcher: Matcher):
                 msg += [
                     MessageSegment.node_custom(
                         user_id=config_dev.twitter_qq, nickname=twitter_list[user_name]["screen_name"], content=Message(
-                            f"{user_name}  {'r18' if twitter_list[user_name]['private'][str(event.user_id)]['r18'] else ''}"
+                            f"{user_name}  {'r18' if twitter_list[user_name]['private'][str(event.user_id)]['r18'] else ''}  {'媒体' if twitter_list[user_name]['private'][str(event.user_id)]['media'] else ''}"
                             )
                     )
                 ]

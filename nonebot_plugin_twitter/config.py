@@ -47,10 +47,10 @@ class Config(BaseModel):
 config_dev = Config.parse_obj(get_driver().config)
 
 website_list = [
-    "https://twitter.owacon.moe",
+    "https://nitter.1d4.us",
+    "https://bird.trom.tf",
+    "https://nitter.moomoo.me"
     "https://nitter.unixfox.eu",
-    "https://nitter.1d4.us/",
-    "https://nitter.it/",
-    "https://bird.trom.tf/",
-    "https://nitter.moomoo.me/"
+    "https://nitter.it",
+    "https://twitter.owacon.moe",
 ]
