@@ -10,7 +10,7 @@ else:
     from importlib.metadata import version
 
 try:
-    __version__ = version("nonebot_plugin_bilichat")
+    __version__ = version("nonebot_plugin_twitter")
 except Exception:
     __version__ = None
 

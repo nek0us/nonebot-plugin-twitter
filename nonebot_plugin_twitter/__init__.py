@@ -6,7 +6,6 @@ from nonebot.adapters.onebot.v11 import Message,MessageEvent,Bot,GroupMessageEve
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot.log import logger
-import nonebot
 from nonebot.adapters.onebot.v11.adapter import Adapter
 from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
@@ -15,6 +14,7 @@ import json
 import random
 from httpx import AsyncClient,Client
 import asyncio
+from nonebot_plugin_sendmsg_by_bots import tools
 from .config import Config,__version__,website_list,config_dev
 from .api import *
 
@@ -99,8 +99,9 @@ async def get_pic(url: str,user_name: str) -> MessageSegment:
             logger.info(f"图片下载失败:{url}")
             return MessageSegment.node_custom(user_id=config_dev.twitter_qq, nickname=user_name,
                                    content=Message(f"图片加载失败 X_X {url}"))
+        tmp = bytes(random.randint(0,255))
         return MessageSegment.node_custom(user_id=config_dev.twitter_qq, nickname=user_name,
-                                   content=Message(MessageSegment.image(file=res.read())))
+                                   content=Message(MessageSegment.image(file=(res.read()+tmp))))
 
 
 
@@ -143,7 +144,6 @@ async def get_status(user_name,twitter_list):
                 task_res += [msg_type(config_dev.twitter_qq, path,name=user_name) for path in path_res]
                 
                 # 准备发送
-                bots = nonebot.get_adapter(Adapter).bots
                 for group_num in twitter_list[user_name]["group"]:
                     # 群聊
                     if twitter_list[user_name]["group"][group_num]["status"]:
@@ -154,12 +154,12 @@ async def get_status(user_name,twitter_list):
                             logger.info(f"根据媒体设置，群 {group_num} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")
                             continue
                         
-                        for bot in bots:
-                            try:
-                                await bots[bot].send_group_forward_msg(group_id=int(group_num), messages=task_res)
+                        
+                        try:
+                            if await tools.send_group_forward_msg_by_bots(group_id=int(group_num), node_msg=task_res):
                                 logger.info(f"群 {group_num} 的推文 {user_name}/status/{line_new_tweet_id} 发送成功")
-                            except Exception:
-                                pass
+                        except Exception:
+                            pass
                     else:
                         logger.info(f"根据通知设置，群 {group_num} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")
                         
@@ -173,12 +173,12 @@ async def get_status(user_name,twitter_list):
                             logger.info(f"根据媒体设置，qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")   
                             continue
                         
-                        for bot in bots:
-                            try:
-                                await bots[bot].send_private_forward_msg(user_id=int(qq), messages=task_res)
+                        
+                        try:
+                            if await tools.send_private_forward_msg_by_bots(user_id=int(qq), node_msg=task_res):
                                 logger.info(f"qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 发送成功")
-                            except Exception:
-                                pass
+                        except Exception:
+                            pass
                     else:
                         logger.info(f"根据通知设置，qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")                    
                                     
