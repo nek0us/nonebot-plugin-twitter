@@ -92,6 +92,8 @@ async def get_tweet(user_name:str,tweet_id: str = "0") -> dict:
                 result["video_url"] = ""
             # r18
             result["r18"] = bool(r18 := soup.find_all('div', class_='unavailable-box'))
+            if result["video_url"] or result["pic_url_list"]:
+                result["media"] = True
         else:
             result["status"] = False
     return result
