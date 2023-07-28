@@ -71,6 +71,7 @@ async def get_tweet(user_name:str,tweet_id: str = "0") -> dict:
         result = {}
         if res.status_code ==200:
             result["status"] = True
+            result["media"] = False
             soup = BeautifulSoup(res.text,"html.parser")
             # text
             result["text"] = []
