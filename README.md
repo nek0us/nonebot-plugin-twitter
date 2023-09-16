@@ -117,8 +117,10 @@ r18 : 开启r18推文推送
 ```bash
 # twitter
 twitter_website="https://nitter.privacydev.net"
-最近找工作忙，更新慢了请见谅
 ```
+
+最近找工作忙，更新慢了请见谅
+
 
 2023.07.28 0.1.13
 1. 修复bug
