@@ -76,7 +76,7 @@ _✨ 推文订阅推送插件 ✨_
 
 配置格式示例
 ```bash
-#twitter
+# twitter
 twitter_proxy="http://127.0.0.1:1090"
 twitter_qq=2854196306
 command_priority=10
@@ -111,6 +111,14 @@ r18 : 开启r18推文推送
 3.新的0.1.0版本为破坏性更新：代理配置格式更改，关注列表需重新关注。
 
 ### 更新记录
+
+2023.09.16 0.1.13
+1. 暂无更新，可在env配置文件中添加以下参数来解决不可用问题
+```bash
+# twitter
+twitter_website="https://nitter.privacydev.net"
+最近找工作忙，更新慢了请见谅
+```
 
 2023.07.28 0.1.13
 1. 修复bug
