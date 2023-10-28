@@ -47,8 +47,6 @@ class Config(BaseModel):
 config_dev = Config.parse_obj(get_driver().config)
 
 website_list = [
-    "https://nitter.privacydev.net",
-    "https://nitter.salastil.com",
     "https://nitter.d420.de",
     "https://nitter.poast.org",
     "https://nitter.x86-64-unknown-linux-gnu.zip",
@@ -57,6 +55,8 @@ website_list = [
     "https://nitter.dafriser.be",
     "https://nitter.woodland.cafe",
     "https://nitter.mint.lgbt",
+    "https://nitter.salastil.com",
+    "https://nitter.privacydev.net",
     
     # "https://nitter.1d4.us",
     # "https://bird.trom.tf",
