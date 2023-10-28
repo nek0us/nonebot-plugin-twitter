@@ -93,7 +93,7 @@ def msg_type(user_id:int, task: str,name: str):
         
 async def get_pic(url: str,user_name: str) -> MessageSegment:
 
-    async with AsyncClient(proxies=config_dev.twitter_proxy) as client:
+    async with AsyncClient(proxies=config_dev.twitter_proxy,http2=True) as client:
         res = await client.get(f"{config_dev.twitter_url}{url}")
         if res.status_code != 200:
             logger.info(f"图片下载失败:{url}")

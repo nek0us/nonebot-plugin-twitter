@@ -13,7 +13,7 @@ async def get_user_info(user_name:str) -> dict:
     result["screen_name"],
     result["bio"]
     '''
-    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy) as client:
+    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True) as client:
         res = await client.get(url=f"{config_dev.twitter_url}/{user_name}")
         result ={}
         if res.status_code ==200:
@@ -31,7 +31,7 @@ async def get_user_newtimeline(user_name:str,since_id: str = "0") -> str:
     ''' 通过 user_name 获取推文id列表,
     有 since_id return 最近的新的推文id,
     无 since_id return 最新的推文id'''
-    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy) as client:
+    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True) as client:
         res = await client.get(url=f"{config_dev.twitter_url}/{user_name}")
         if res.status_code ==200:
             soup = BeautifulSoup(res.text,"html.parser")
@@ -66,7 +66,7 @@ async def get_tweet(user_name:str,tweet_id: str = "0") -> dict:
     result["video_url"],
     result["r18"]
     '''
-    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy) as client:
+    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True) as client:
         res = await client.get(url=f"{config_dev.twitter_url}/{user_name}/status/{tweet_id}",cookies={"hlsPlayback": "on"})
         result = {}
         if res.status_code ==200:
