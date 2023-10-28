@@ -48,7 +48,7 @@ if config_dev.twitter_website:
 web_list += website_list
 
 
-with Client(proxies=config_dev.twitter_proxy) as client:
+with Client(proxies=config_dev.twitter_proxy,http2=True) as client:
     for url in web_list:
         try:
             res = client.get(f"{url}/elonmusk")
