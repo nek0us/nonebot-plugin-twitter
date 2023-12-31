@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 
 # C extensions
+
+#my
+nonebot_plugin_twitter/__new__.py
+
 *.so
 
 # Distribution / packaging

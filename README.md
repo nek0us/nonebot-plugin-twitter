@@ -73,6 +73,10 @@ _✨ 推文订阅推送插件 ✨_
 | twitter_proxy | 否 | 无 | proxy |
 | twitter_qq | 否 | 2854196310 | 合并消息头像来源 |
 | command_priority | 否 | 10 | 命令优先级 |
+| twitter_htmlmode | 否 | false | 网页截图模式 |
+| twitter_original | 否 | false | 使用x官网截图 |
+| twitter_no_text | 否 | false | 开启媒体过滤后彻底不输出文字 |
+| twitter_node | 否 | true | 使用合并转发消息发送 |
 
 配置格式示例
 ```bash
@@ -80,6 +84,12 @@ _✨ 推文订阅推送插件 ✨_
 twitter_proxy="http://127.0.0.1:1090"
 twitter_qq=2854196306
 command_priority=10
+
+# 使用截图纯图模式示例
+twitter_htmlmode=true
+twitter_original=false
+twitter_no_text=true
+twitter_node=false
 ```
 
 ## 🎉 使用
@@ -110,7 +120,18 @@ r18 : 开启r18推文推送
 
 3.新的0.1.0版本为破坏性更新：代理配置格式更改，关注列表需重新关注。
 
+4.已知bug，视频无法发送（可能为gocq bug）
+
 ### 更新记录
+2024.01.01 0.2.0
+1. 增加截图模式
+2. 增加无文字的媒体过滤
+3. 增加非合并转发发送方式
+4. 调整缓存删除方式为每天早上删除（没什么用，现在发不出视频）
+5. 调整媒体图片输出不再会输出评论区他人的图片视频
+6. 优化了日志输出
+7. 还有什么有点忘了，一口气改到0点，祝大家2024新年快乐吧
+
 
 2023.10.28 0.1.14
 1. 更新可用站点列表
