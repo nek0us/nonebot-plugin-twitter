@@ -44,18 +44,18 @@ class Config(BaseModel):
     @validator("twitter_proxy")
     def check_proxy(cls,v):
         if isinstance(v,str):
-            logger.info("twitter_proxy {v} 读取成功")
+            logger.info(f"twitter_proxy {v} 读取成功")
             return v
     @validator("twitter_qq")
     def check_twitter_qq(cls,v):
         if isinstance(v,int):
-            logger.info("twitter_qq {v} 读取成功")
+            logger.info(f"twitter_qq {v} 读取成功")
             return v
         
     @validator("command_priority")
     def check_command_priority(cls,v):
         if isinstance(v,int) and v >= 1:
-            logger.info("command_priority {v} 读取成功")
+            logger.info(f"command_priority {v} 读取成功")
             return v
         
     @validator("twitter_original")
@@ -84,23 +84,27 @@ class Config(BaseModel):
 config_dev = Config.parse_obj(get_driver().config)
 
 website_list = [
-    "https://nitter.d420.de",
-    "https://nitter.poast.org",
-    "https://nitter.x86-64-unknown-linux-gnu.zip",
     "https://n.opnxng.com",
-    "https://nitter.catsarch.com",
-    "https://nitter.dafriser.be",
-    "https://nitter.woodland.cafe",
+    "https://nitter.uni-sonia.com",
     "https://nitter.mint.lgbt",
-    "https://nitter.salastil.com",
+    "https://nitter.poast.org",
     "https://nitter.privacydev.net",
+    "https://nitter.salastil.com",
+    "https://nitter.d420.de",
+    "https://nitter.1d4.us",
+    "https://nitter.moomoo.me"
     
-    # "https://nitter.1d4.us",
-    # "https://bird.trom.tf",
-    # "https://nitter.moomoo.me"
-    # "https://nitter.unixfox.eu",
-    # "https://nitter.it",
-    # "https://twitter.owacon.moe",
+    # "https://n.biendeo.com", # 很慢
+    # "https://nitter.catsarch.com", # 很慢
+    # "https://nitter.net", # 403
+    # "https://nitter.dafriser.be", # 502
+    # "https://nitter.woodland.cafe", # 403
+    # "https://nitter.x86-64-unknown-linux-gnu.zip", # 403
+    # "https://bird.trom.tf", # 寄
+    # "https://nitter.unixfox.eu", # 403
+    # "https://nitter.it", # 404
+    # "https://twitter.owacon.moe", # 301
+    
 ]
 
 twitter_post = '''() => {

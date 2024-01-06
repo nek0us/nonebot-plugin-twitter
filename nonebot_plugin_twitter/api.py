@@ -106,7 +106,7 @@ async def get_tweet(browser: Browser,user_name:str,tweet_id: str = "0") -> dict:
         result["html"] = b""
         result["media"] = False
         url=f"{config_dev.twitter_url}/{user_name}/status/{tweet_id}"
-        
+
         if config_dev.twitter_htmlmode:
             context = await browser.new_context()
             page = await context.new_page()
@@ -122,37 +122,33 @@ async def get_tweet(browser: Browser,user_name:str,tweet_id: str = "0") -> dict:
                 await page.wait_for_load_state("load")
                 await page.evaluate(twitter_login)
                 await page.evaluate(twitter_post)
-                screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div/div/div[2]/main/div/div/div/div[1]/div/section/div/div/div[1]").screenshot(path="screenshot.png")
+                screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div/div/div[2]/main/div/div/div/div[1]/div/section/div/div/div[1]").screenshot()
             else:
                 await page.goto(url)
                 await page.wait_for_load_state("load")
                 await page.evaluate(nitter_head)
                 await page.evaluate(nitter_foot)
-                screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div").screenshot(path="screenshot.png")
+                screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div").screenshot()
             logger.info(f"使用浏览器截图获取 {url} 推文信息成功")
             result["html"] = screenshot_bytes
             await page.close()
             await context.close()
-            
-        
+
+
         async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True,timeout=120) as client:
             res = await client.get(url,cookies={"hlsPlayback": "on"},headers=header)
             if res.status_code ==200:
                 soup = BeautifulSoup(res.text,"html.parser")
-                # text
+
+                # text && pic && video
                 result["text"] = []
-                if match := soup.find_all('div', class_='tweet-content media-body'):
-                    for x in match:
-                        if x.parent.attrs["class"] == "replying-to":
-                            continue
-                        result["text"].append(x.text) 
-                # pic && video
                 result["pic_url_list"] = []
                 result["video_url"] = ""
-                main_thread_div = soup.find('div', class_='main-thread')
-                if main_thread_div:
+                if main_thread_div := soup.find('div', class_='main-thread'):
+                    # pic
                     if pic_list := main_thread_div.find_all('a', class_='still-image'): # type: ignore
                         result["pic_url_list"] = [x.attrs["href"] for x in pic_list]
+                    # video
                     if video_list := main_thread_div.find_all('video'): # type: ignore
                         # result["video_url"] = video_list[0].attrs["data-url"]
                         try:
@@ -161,7 +157,12 @@ async def get_tweet(browser: Browser,user_name:str,tweet_id: str = "0") -> dict:
                             logger.info(f"获取视频推文链接出错，转为获取自身链接，{e}")
                             video_url = url.split(config_dev.twitter_url)[1]
                         result["video_url"] = f"https://twitter.com{video_url}"
-                    
+                    # text
+                    if match := main_thread_div.find_all('div', class_='tweet-content media-body'): # type: ignore
+                        for x in match:
+                            if x.parent.attrs["class"] == "replying-to":
+                                continue
+                            result["text"].append(x.text)
                 # r18
                 result["r18"] = bool(r18 := soup.find_all('div', class_='unavailable-box'))
                 if result["video_url"] or result["pic_url_list"]:

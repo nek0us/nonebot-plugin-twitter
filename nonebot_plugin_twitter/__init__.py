@@ -67,7 +67,7 @@ async def pywt_init():
 with Client(proxies=config_dev.twitter_proxy,http2=True) as client:
     for url in web_list:
         try:
-            res = client.get(f"{url}/elonmusk")
+            res = client.get(f"{url}/elonmusk/status/1741087997410660402")
             if res.status_code == 200:
                 logger.info(f"website: {url} ok!")
                 config_dev.twitter_url = url
