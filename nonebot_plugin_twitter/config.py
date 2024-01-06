@@ -84,15 +84,15 @@ class Config(BaseModel):
 config_dev = Config.parse_obj(get_driver().config)
 
 website_list = [
-    "https://n.opnxng.com",
-    "https://nitter.uni-sonia.com",
     "https://nitter.mint.lgbt",
+    "https://nitter.uni-sonia.com",
     "https://nitter.poast.org",
     "https://nitter.privacydev.net",
     "https://nitter.salastil.com",
     "https://nitter.d420.de",
     "https://nitter.1d4.us",
     "https://nitter.moomoo.me"
+    "https://n.opnxng.com",
     
     # "https://n.biendeo.com", # 很慢
     # "https://nitter.catsarch.com", # 很慢

@@ -306,3 +306,13 @@ async def send_msg(twitter_list: dict,user_name: str,line_new_tweet_id: str,twee
         else:
             logger.info(f"根据通知设置，qq {qq} 的推文 {user_name}/status/{line_new_tweet_id} 跳过发送")                    
 
+def get_next_element(my_list, current_element):
+
+    # 获取当前元素在列表中的索引
+    index = my_list.index(current_element)
+    
+    # 计算下一个元素的索引
+    next_index = (index + 1) % len(my_list)
+    
+    # 返回下一个元素
+    return my_list[next_index]

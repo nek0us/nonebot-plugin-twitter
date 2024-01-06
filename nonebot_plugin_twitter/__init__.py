@@ -106,10 +106,16 @@ if config_dev.plugin_enabled:
             twitter_list_task = [
                 get_status(user_name, twitter_list) for user_name in twitter_list
             ]
-            asyncio.gather(*twitter_list_task)
+            result = await asyncio.gather(*twitter_list_task)
+            if config_dev.twitter_website == "":
+                # 使用默认镜像站
+                true_count = sum(1 for elem in result if elem)
 
-        
-async def get_status(user_name,twitter_list):
+                if true_count < len(result) / 2:
+                    config_dev.twitter_url = get_next_element(website_list,config_dev.twitter_url)
+                    logger.debug(f"检测到当前镜像站出错过多，切换镜像站至：{config_dev.twitter_url}")
+                    
+async def get_status(user_name,twitter_list) -> bool:
     # 获取推文
     try:
         line_new_tweet_id = await get_user_newtimeline(user_name,twitter_list[user_name]["since_id"])
@@ -119,7 +125,7 @@ async def get_status(user_name,twitter_list):
             if not tweet_info["status"] and not tweet_info["html"]:
                 # 啥都没获取到
                 logger.warning(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
-                return 
+                return False
             elif not tweet_info["status"] and tweet_info["html"]:
                 # 起码有个截图
                 logger.debug(f"{user_name} 的推文 {line_new_tweet_id} 获取失败，但截图成功，准备发送截图")
@@ -139,7 +145,9 @@ async def get_status(user_name,twitter_list):
                     else:
                         # 直接发送
                         await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg),"direct")
-                pass
+                        
+                    return True
+                return False
             # elif tweet_info["status"] and not tweet_info["html"]:
             #     # 只没有截图？不应该啊
             #     pass
@@ -211,9 +219,11 @@ async def get_status(user_name,twitter_list):
                 # 更新本地缓存
                 twitter_list[user_name]["since_id"] = line_new_tweet_id
                 dirpath.write_text(json.dumps(twitter_list))
-
+                return True
+        return True
     except Exception as e:
         logger.debug(f"获取 {user_name} 的推文出现异常：{e}")
+        return False
 
 
 save = on_command("关注推主",block=True,priority=config_dev.command_priority)
