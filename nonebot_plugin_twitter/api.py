@@ -118,14 +118,14 @@ async def get_tweet(browser: Browser,user_name:str,tweet_id: str = "0") -> dict:
             if config_dev.twitter_original:
                 # 原版 twitter
                 url=f"https://twitter.com/{user_name}/status/{tweet_id}"
-                await page.goto(url)
-                await page.wait_for_load_state("load")
+                await page.goto(url,timeout=60000)
+                await page.wait_for_load_state("load",timeout=60000)
                 await page.evaluate(twitter_login)
                 await page.evaluate(twitter_post)
                 screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div/div/div[2]/main/div/div/div/div[1]/div/section/div/div/div[1]").screenshot()
             else:
-                await page.goto(url)
-                await page.wait_for_load_state("load")
+                await page.goto(url,timeout=60000)
+                await page.wait_for_load_state("load",timeout=60000)
                 await page.evaluate(nitter_head)
                 await page.evaluate(nitter_foot)
                 screenshot_bytes = await page.locator("xpath=/html/body/div[1]/div").screenshot()

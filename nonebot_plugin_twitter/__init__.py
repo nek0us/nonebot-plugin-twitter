@@ -48,20 +48,20 @@ if config_dev.twitter_website:
     web_list.append(config_dev.twitter_website)
 web_list += website_list
 
-browser = ""
 get_driver = get_driver()
 @get_driver.on_startup
 async def pywt_init():
     if config_dev.twitter_htmlmode:
-        global browser
         if not await is_firefox_installed():
             logger.info("Firefox browser is not installed, installing...")
             install_firefox()
             logger.info("Firefox browser has been successfully installed.")
-        playwright_manager = async_playwright()
-        playwright = await playwright_manager.start()
-        browser = await playwright.firefox.launch(slow_mo=50)
-
+        
+async def create_browser():
+    playwright_manager = async_playwright()
+    playwright = await playwright_manager.start()
+    browser = await playwright.firefox.launch(slow_mo=50,proxy={"server": config_dev.twitter_proxy})
+    return playwright,browser
         
 
 with Client(proxies=config_dev.twitter_proxy,http2=True) as client:
@@ -102,26 +102,40 @@ if config_dev.plugin_enabled:
     else:
         @scheduler.scheduled_job("interval",minutes=3,id="twitter",misfire_grace_time=179)
         async def now_twitter():
+            playwright,browser = await create_browser()
+            max_duration = 160
             twitter_list = json.loads(dirpath.read_text("utf8"))
             twitter_list_task = [
-                get_status(user_name, twitter_list) for user_name in twitter_list
+                get_status(user_name, twitter_list, browser) for user_name in twitter_list
             ]
-            result = await asyncio.gather(*twitter_list_task)
-            if config_dev.twitter_website == "":
-                # 使用默认镜像站
-                true_count = sum(1 for elem in result if elem)
-
-                if true_count < len(result) / 2:
-                    config_dev.twitter_url = get_next_element(website_list,config_dev.twitter_url)
-                    logger.debug(f"检测到当前镜像站出错过多，切换镜像站至：{config_dev.twitter_url}")
-                    
-async def get_status(user_name,twitter_list) -> bool:
+            try:
+                # 等待任务完成或超时
+                result = await asyncio.wait_for(asyncio.gather(*twitter_list_task), timeout=max_duration)
+                # result = await asyncio.gather(*twitter_list_task)
+                if config_dev.twitter_website == "":
+                    # 使用默认镜像站
+                    true_count = sum(1 for elem in result if elem)
+                    if true_count < len(result) / 2:
+                        config_dev.twitter_url = get_next_element(website_list,config_dev.twitter_url)
+                        logger.debug(f"检测到当前镜像站出错过多，切换镜像站至：{config_dev.twitter_url}")
+            except asyncio.TimeoutError:
+                # 任务超时，执行超时逻辑
+                logger.warning(f"twitter 获取超时")
+            except Exception as e:
+                # 任务出错
+                logger.warning(f"twitter 任务出错{e}")
+            finally:
+                await browser.close()
+                await playwright.stop()
+                # logger.debug(f"twitter 关闭浏览器成功")
+                
+async def get_status(user_name,twitter_list,browser:Browser) -> bool:
     # 获取推文
     try:
         line_new_tweet_id = await get_user_newtimeline(user_name,twitter_list[user_name]["since_id"])
         if line_new_tweet_id and line_new_tweet_id != "not found":
             # update tweet
-            tweet_info = await get_tweet(browser,user_name,line_new_tweet_id) # type:ignore
+            tweet_info = await get_tweet(browser,user_name,line_new_tweet_id)
             if not tweet_info["status"] and not tweet_info["html"]:
                 # 啥都没获取到
                 logger.warning(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
