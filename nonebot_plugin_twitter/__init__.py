@@ -1,11 +1,11 @@
 import os
 import sys
-from nonebot import require,on_command,get_driver
+from nonebot import on_regex, require,on_command,get_driver
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 from nonebot.adapters.onebot.v11 import Message,MessageEvent,Bot,GroupMessageEvent,MessageSegment
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg
+from nonebot.params import CommandArg,RegexStr
 from nonebot.log import logger
 from nonebot.adapters.onebot.v11.adapter import Adapter
 from nonebot.exception import FinishedException
@@ -24,12 +24,16 @@ __plugin_meta__ = PluginMetadata(
     name="twitter 推特订阅",
     description="订阅 twitter 推文",
     usage="""
-|     指令    |权限|需要@|   范围   | 说明 |
-|   关注推主   |无 | 否  | 群聊/私聊 | 关注，指令格式：“关注推主 <推主id> [r18]” r18为可选参数，不开启和默认为不推送r18推文|
-|   取关推主   |无 | 否  | 群聊/私聊 | 取关切割 |
-|   推主列表   |无 | 否  | 群聊/私聊 | 展示列表 |
-| 推文推送关闭 |群管| 否 | 群聊/私聊 | 关闭推送 |
-| 推文推送开启 |群管| 否 | 群聊/私聊 | 开启推送 |
+| 指令 | 权限 | 需要@ | 范围 | 说明 |
+|:-----:|:----:|:----:|:----:|:----:|
+| 关注推主 | 无 | 否 | 群聊/私聊 | 关注，指令格式：“关注推主 <推主id> [r18] [媒体]”|
+| 取关推主 | 无 | 否 | 群聊/私聊 | 取关切割 |
+| 推主列表 | 无 | 否 | 群聊/私聊 | 展示列表 |
+| 推文列表 | 无 | 否 | 群聊/私聊 | 展示最多5条时间线推文，指令格式：“推文列表 <推主id>” |
+| 推文推送关闭 | 无 | 否 | 群聊/私聊 | 关闭推送 |
+| 推文推送开启 | 无 | 否 | 群聊/私聊 | 开启推送 |
+| 推文链接识别关闭 | 无 | 否 | 群聊 | 关闭链接识别 |
+| 推文链接识别开启 | 无 | 否 | 群聊 | 开启链接识别 |
     """,
     type="application",
     config=Config,
@@ -60,7 +64,7 @@ async def pywt_init():
 async def create_browser():
     playwright_manager = async_playwright()
     playwright = await playwright_manager.start()
-    browser = await playwright.firefox.launch(slow_mo=50,proxy={"server": config_dev.twitter_proxy})
+    browser = await playwright.firefox.launch(slow_mo=50,proxy=config_dev.twitter_pywt_proxy)
     return playwright,browser
         
 
@@ -86,16 +90,8 @@ def clean_pic_cache():
     timeline = int(datetime.now().timestamp()) - 60 * 60 * 5
     [os.remove(path / f) for f in filenames if int(f.split(".")[0]) <= timeline]
 
-# Path
-dirpath = Path() / "data" / "twitter"
-dirpath.mkdir(parents=True, exist_ok=True)
-dirpath = Path() / "data" / "twitter" / "cache"
-dirpath.mkdir(parents=True, exist_ok=True)
-dirpath = Path() / "data" / "twitter" / "twitter_list.json"
-dirpath.touch()
-if not dirpath.stat().st_size:
-    dirpath.write_text("{}")
-    
+
+        
 if config_dev.plugin_enabled:
     if not config_dev.twitter_url:
         logger.debug(f"website 推文服务器为空，跳过推文定时检索")
@@ -136,104 +132,7 @@ async def get_status(user_name,twitter_list,browser:Browser) -> bool:
         if line_new_tweet_id and line_new_tweet_id != "not found":
             # update tweet
             tweet_info = await get_tweet(browser,user_name,line_new_tweet_id)
-            if not tweet_info["status"] and not tweet_info["html"]:
-                # 啥都没获取到
-                logger.warning(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
-                return False
-            elif not tweet_info["status"] and tweet_info["html"]:
-                # 起码有个截图
-                logger.debug(f"{user_name} 的推文 {line_new_tweet_id} 获取失败，但截图成功，准备发送截图")
-                msg = []
-                if config_dev.twitter_htmlmode:
-                    # 有截图
-                    bytes_size = sys.getsizeof(tweet_info["html"]) / (1024 * 1024)
-                    msg.append(MessageSegment.image(tweet_info["html"]))
-                    if config_dev.twitter_node:
-                        # 合并转发
-                        msg.append(MessageSegment.node_custom(
-                            user_id=config_dev.twitter_qq,
-                            nickname=twitter_list[user_name]["screen_name"],
-                            content=Message(MessageSegment.image(tweet_info["html"]))
-                        ))
-                        await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
-                    else:
-                        # 直接发送
-                        await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg),"direct")
-                        
-                    return True
-                return False
-            # elif tweet_info["status"] and not tweet_info["html"]:
-            #     # 只没有截图？不应该啊
-            #     pass
-            # elif tweet_info["status"] and tweet_info["html"]:
-            else:
-                # 有没有截图不知道，内容信息是真有
-                task = []
-                all_msg = []
-                
-                # html模式
-                if config_dev.twitter_htmlmode:
-                    bytes_size = sys.getsizeof(tweet_info["html"]) / (1024 * 1024)
-                    all_msg.append(MessageSegment.image(tweet_info["html"]))
-                
-                # 返回图片
-                if tweet_info["pic_url_list"]:
-                    for url in tweet_info["pic_url_list"]:
-                        all_msg.append(await get_pic(url))
-                        
-                # 视频，返回本地视频路径
-                if tweet_info["video_url"]:
-                    all_msg.append(await get_video(tweet_info["video_url"]))
-                    
-                # 准备发送消息
-                if config_dev.twitter_node:
-                    # 以合并方式发送
-                    msg = []
-                    for value in  all_msg:
-                        msg.append(
-                            MessageSegment.node_custom(
-                                user_id=config_dev.twitter_qq,
-                                nickname=twitter_list[user_name]["screen_name"],
-                                content=Message(value)
-                            )
-                        )
-                    if not config_dev.twitter_no_text:
-                        # 开启了媒体文字
-                        for x in tweet_info["text"]:
-                            msg.append(MessageSegment.node_custom(
-                                user_id=config_dev.twitter_qq,
-                                nickname=twitter_list[user_name]["screen_name"],
-                                content=
-                                Message(x)
-                            ))
-                    # 发送合并消息    
-                    await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
-                else:
-                    # 以直接发送的方式
-                    if all_msg[-1].type == "video":
-                        # 有视频先发视频
-                        video_msg = all_msg.pop()
-                        # msg = []
-                        # msg.append(
-                        #     MessageSegment.node_custom(
-                        #         user_id=config_dev.twitter_qq,
-                        #         nickname=twitter_list[user_name]["screen_name"],
-                        #         content=Message(video_msg)
-                        #     )
-                        # )
-                        # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg),"video")
-                        await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(video_msg),"video")
-                    if not config_dev.twitter_no_text:    
-                        # 开启了媒体文字
-                        all_msg.append(MessageSegment.text('\n\n'.join(tweet_info["text"])))
-                    # 剩余部分直接发送
-                    await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(all_msg),"direct")
-                    
-                    
-                # 更新本地缓存
-                twitter_list[user_name]["since_id"] = line_new_tweet_id
-                dirpath.write_text(json.dumps(twitter_list))
-                return True
+            return await tweet_handle(tweet_info,user_name,line_new_tweet_id,twitter_list)
         return True
     except Exception as e:
         logger.debug(f"获取 {user_name} 的推文出现异常：{e}")
@@ -403,3 +302,88 @@ async def twitter_status_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg
     except Exception as e:
         await matcher.finish(f"异常:{e}")
 
+pat_twitter = on_regex(r'(twitter\.com|x\.com)/[a-zA-Z0-9_]+/status/\d+',priority=config_dev.command_priority)
+@pat_twitter.handle()
+async def pat_twitter_handle(bot: Bot,event: MessageEvent,matcher: Matcher,text: str = RegexStr()):
+    logger.info(f"检测到推文链接 {text}")
+    link_list = json.loads(linkpath.read_text("utf8"))
+    playwright,browser = await create_browser()
+    try:
+        if isinstance(event,GroupMessageEvent):
+            # 是群，处理一下先
+            if str(event.group_id) not in link_list:
+                link_list[str(event.group_id)] = {"link":True}
+                linkpath.write_text(json.dumps(link_list))
+            
+            if not link_list[str(event.group_id)]["link"]:
+                # 关闭了链接识别
+                logger.info(f"根据群设置，不获取推文链接内容 {text}")
+                await matcher.finish()
+        # 处理完了 继续
+        
+        # x.com/username/status/tweet_id     
+        tmp = text.split("/")
+        user_name = tmp[1]
+        tweet_id = tmp[-1]
+        
+        tweet_info = await get_tweet(browser,user_name,tweet_id)
+        msg = await tweet_handle_link(tweet_info,user_name,tweet_id)
+        if config_dev.twitter_node:
+            if isinstance(event,GroupMessageEvent):
+                await bot.send_group_forward_msg(group_id=int(event.group_id), messages=msg)
+            else:
+                await bot.send_private_forward_msg(user_id=int(event.user_id), messages=msg)
+        else:
+            await matcher.send(msg, reply_message=True)
+    except FinishedException:
+        pass            
+    except Exception as e:
+        await matcher.send(f"异常:{e}")
+    finally:
+        await browser.close()
+        await playwright.stop()
+        await matcher.finish()
+        
+twitter_link = on_command("推文链接识别",priority=config_dev.command_priority)
+@twitter_link.handle()
+async def twitter_link_handle(event: GroupMessageEvent,matcher: Matcher,arg: Message = CommandArg()):
+    link_list = json.loads(linkpath.read_text("utf8"))
+    if str(event.group_id) not in link_list:
+        link_list[str(event.group_id)] = {"link":True}
+        linkpath.write_text(json.dumps(link_list))
+    if "开启" in arg.extract_plain_text():
+        link_list[str(event.group_id)]["link"] = True
+    elif "关闭" in arg.extract_plain_text():
+        link_list[str(event.group_id)]["link"] = False
+    else:
+        await matcher.finish("仅支持“开启”和“关闭”操作")
+    linkpath.write_text(json.dumps(link_list))    
+    await matcher.finish(f"推文链接识别已{arg.extract_plain_text()}")
+    
+twitter_timeline = on_command("推文列表",priority=config_dev.command_priority)
+@twitter_timeline.handle()
+async def twitter_timeline_handle(bot: Bot,event: MessageEvent,matcher: Matcher,arg: Message = CommandArg()):
+    if not config_dev.twitter_htmlmode:
+        await matcher.finish(f"暂时仅支持html模式，请先联系超级管理员开启")
+    user_info = await get_user_info(arg.extract_plain_text())
+    if not user_info["status"]:
+        await matcher.finish(f"未找到 {arg.extract_plain_text()}")
+    new_line = await get_user_timeline(user_info["user_name"])
+    if "not found" in new_line:
+        await matcher.finish(f"未找到 {arg.extract_plain_text()} 存在推文时间线")
+    if len(new_line) > 5:
+        new_line = new_line[:5]
+    playwright,browser = await create_browser()
+    try:
+        screen = await get_timeline_screen(browser,user_info["user_name"],len(new_line))
+        if not screen:
+            await matcher.finish("好像失败了...")
+        await matcher.send(MessageSegment.image(file=screen))
+    except FinishedException:
+        pass            
+    except Exception as e:
+        await matcher.send(f"异常:{e}")
+    finally:
+        await browser.close()
+        await playwright.stop()
+        await matcher.finish()

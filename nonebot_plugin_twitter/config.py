@@ -1,5 +1,6 @@
-from pydantic import BaseModel,validator
+from pydantic import BaseModel, root_validator,validator
 from typing import Literal, Optional, TypedDict
+from playwright._impl._api_structures import ProxySettings
 from nonebot.log import logger
 from nonebot import get_driver
 import sys
@@ -19,6 +20,8 @@ class Config(BaseModel):
     twitter_website: Optional[str] = ""
     # 代理
     twitter_proxy: Optional[str] = None
+    # playwright 代理
+    twitter_pywt_proxy: Optional[ProxySettings] = None
     # 内部当前使用url
     twitter_url: Optional[str] = ""
     # 自定义转发消息来源qq
@@ -35,6 +38,7 @@ class Config(BaseModel):
     twitter_no_text: bool = False
     # 使用转发消息
     twitter_node: bool = True
+    
     
     @validator("twitter_website")
     def check_twitter_website(cls,v):
@@ -80,7 +84,14 @@ class Config(BaseModel):
     def check_twitter_node(cls,v):
         if isinstance(v,bool):
             logger.info(f"twitter_node 合并转发消息  {'已开启' if v else '已关闭'}")
-            return v           
+            return v        
+        
+    @root_validator(pre=False)
+    def set_twitter_pywt_proxy(cls, values):
+        twitter_proxy = values.get('twitter_proxy')
+        values['twitter_pywt_proxy'] = {"server": twitter_proxy} if twitter_proxy else None
+        return values
+           
 config_dev = Config.parse_obj(get_driver().config)
 
 website_list = [

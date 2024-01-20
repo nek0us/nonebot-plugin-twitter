@@ -1,5 +1,6 @@
 import json
 import random
+import sys
 import typing
 import httpx
 import os
@@ -13,6 +14,20 @@ from playwright.async_api import async_playwright,Browser
 from nonebot_plugin_sendmsg_by_bots import tools
 from .config import config_dev,twitter_post,twitter_login,nitter_head,nitter_foot,SetCookieParam
 
+# Path
+dirpath = Path() / "data" / "twitter"
+dirpath.mkdir(parents=True, exist_ok=True)
+dirpath = Path() / "data" / "twitter" / "cache"
+dirpath.mkdir(parents=True, exist_ok=True)
+dirpath = Path() / "data" / "twitter" / "twitter_list.json"
+dirpath.touch()
+if not dirpath.stat().st_size:
+    dirpath.write_text("{}")
+linkpath = Path() / "data" / "twitter" / "twitter_link.json"
+linkpath.touch()
+if not linkpath.stat().st_size:
+    linkpath.write_text("{}")
+    
 header = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -35,10 +50,12 @@ async def get_user_info(user_name:str) -> dict:
     result["screen_name"],
     result["bio"]
     '''
+    result ={}
+    result["status"] = False
     try:
         async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True,timeout=120) as client:
             res = await client.get(url=f"{config_dev.twitter_url}/{user_name}",headers=header)
-            result ={}
+            
             if res.status_code ==200:
                 result["status"] = True
                 result["user_name"] = user_name
@@ -50,46 +67,84 @@ async def get_user_info(user_name:str) -> dict:
                 result["status"] = False
     except Exception as e:
         logger.warning(f"通过 user_name {user_name} 获取信息详情出错：{e}")
-        raise e
+
     return result
+
+async def get_user_timeline(user_name:str,since_id: str = "0"):
+    async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True,timeout=120) as client:
+        res = await client.get(url=f"{config_dev.twitter_url}/{user_name}",headers=header)
+        if res.status_code ==200:
+            soup = BeautifulSoup(res.text,"html.parser")
+            timeline_list = soup.find_all('a', class_='tweet-link')
+            new_line =[]
+            for x in timeline_list:
+                if user_name in x.attrs["href"]:
+                    tweet_id = x.attrs["href"].split("/").pop().replace("#m","")
+                    if since_id != "0":
+                        if int(tweet_id) > int(since_id):
+                            logger.trace(f"通过 user_name {user_name} 获取时间线成功：{tweet_id}")
+                            new_line.append(tweet_id)
+                    else:
+                        new_line.append(tweet_id)
+                        
+        else:
+            logger.warning(f"通过 user_name {user_name} 获取时间线失败：{res.status_code} {res.text}")
+            new_line = ["not found"]
+        return new_line
 
 async def get_user_newtimeline(user_name:str,since_id: str = "0") -> str:
     ''' 通过 user_name 获取推文id列表,
     有 since_id return 最近的新的推文id,
     无 since_id return 最新的推文id'''
     try:
-        async with httpx.AsyncClient(proxies=config_dev.twitter_proxy,http2=True,timeout=120) as client:
-            res = await client.get(url=f"{config_dev.twitter_url}/{user_name}",headers=header)
-            if res.status_code ==200:
-                soup = BeautifulSoup(res.text,"html.parser")
-                timeline_list = soup.find_all('a', class_='tweet-link')
-                new_line =[]
-                for x in timeline_list:
-                    if user_name in x.attrs["href"]:
-                        tweet_id = x.attrs["href"].split("/").pop().replace("#m","")
-                        if since_id != "0":
-                            if int(tweet_id) > int(since_id):
-                                logger.trace(f"通过 user_name {user_name} 获取时间线成功：{tweet_id}")
-                                new_line.append(tweet_id)
-                        else:
-                            new_line.append(tweet_id)
-                            
-                if since_id == "0":
-                    if new_line == []:
-                        new_line.append("1")
-                    else:
-                        new_line = [str(max(map(int,new_line)))]
-                if new_line == []:
-                    new_line = ["not found"]
-                
+        new_line = await get_user_timeline(user_name, since_id)
+        if since_id == "0":
+            if new_line == []:
+                new_line.append("1")
             else:
-                logger.warning(f"通过 user_name {user_name} 获取时间线失败：{res.status_code} {res.text}")
-                new_line = ["not found"]
+                new_line = [str(max(map(int,new_line)))]
+        if new_line == []:
+            new_line = ["not found"]
         return new_line[-1]
     except Exception as e:
         logger.warning(f"通过 user_name {user_name} 获取时间线失败：{e}")
         raise e
+    
+async def get_timeline_screen(browser: Browser,user_name: str,length: int = 5):
+    url=f"{config_dev.twitter_url}/{user_name}"
+    context = await browser.new_context()
+    page = await context.new_page()
+    await page.goto(url,timeout=60000)
+    await page.wait_for_load_state("load",timeout=60000)
+    await page.wait_for_selector('.timeline-item')
 
+    tweets = await page.query_selector_all('.timeline-item')
+    first_five_tweets = tweets[:5]
+
+    if len(first_five_tweets) > 0:
+        first_bbox = await first_five_tweets[0].bounding_box()
+        fifth_bbox = await first_five_tweets[4].bounding_box()
+        if first_bbox and fifth_bbox:
+        # 计算前五个推文所占的总高度
+            total_height = fifth_bbox['y'] + fifth_bbox['height'] - first_bbox['y']
+
+            # 调整浏览器视口的高度
+            await page.set_viewport_size({'width': 1280, 'height': total_height})
+
+            # 再次计算第一个推文的位置和尺寸，因为视口大小变化后位置可能会有所变动
+            first_bbox = await first_five_tweets[0].bounding_box()
+
+            # 截图
+            screen = await page.screenshot(clip={
+                'x': first_bbox['x'],
+                'y': first_bbox['y'],
+                'width': first_bbox['width'],
+                'height': total_height
+            })
+
+            return screen
+    return None
+    
 async def get_tweet(browser: Browser,user_name:str,tweet_id: str = "0") -> dict:
     '''通过 user_name 和 tweet_id 获取推文详情,
     return:
@@ -316,3 +371,179 @@ def get_next_element(my_list, current_element):
     
     # 返回下一个元素
     return my_list[next_index]
+
+
+async def get_tweet_context(tweet_info: dict,user_name: str,line_new_tweet_id: str):
+    all_msg = []
+        
+    # html模式
+    if config_dev.twitter_htmlmode:
+        bytes_size = sys.getsizeof(tweet_info["html"]) / (1024 * 1024)
+        all_msg.append(MessageSegment.image(tweet_info["html"]))
+    
+    # 返回图片
+    if tweet_info["pic_url_list"]:
+        for url in tweet_info["pic_url_list"]:
+            all_msg.append(await get_pic(url))
+            
+    # 视频，返回本地视频路径
+    if tweet_info["video_url"]:
+        all_msg.append(await get_video(tweet_info["video_url"]))
+        
+    return all_msg
+
+
+async def tweet_handle(tweet_info: dict,user_name: str,line_new_tweet_id: str,twitter_list: dict) -> bool:
+    if not tweet_info["status"] and not tweet_info["html"]:
+        # 啥都没获取到
+        logger.warning(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
+        return False
+    elif not tweet_info["status"] and tweet_info["html"]:
+        # 起码有个截图
+        logger.debug(f"{user_name} 的推文 {line_new_tweet_id} 获取失败，但截图成功，准备发送截图")
+        msg = []
+        if config_dev.twitter_htmlmode:
+            # 有截图
+            bytes_size = sys.getsizeof(tweet_info["html"]) / (1024 * 1024)
+            msg.append(MessageSegment.image(tweet_info["html"]))
+            if config_dev.twitter_node:
+                # 合并转发
+                msg.append(MessageSegment.node_custom(
+                    user_id=config_dev.twitter_qq,
+                    nickname=twitter_list[user_name]["screen_name"],
+                    content=Message(MessageSegment.image(tweet_info["html"]))
+                ))
+                await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
+            else:
+                # 直接发送
+                await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg),"direct")
+                
+            return True
+        return False
+    # elif tweet_info["status"] and not tweet_info["html"]:
+    #     # 只没有截图？不应该啊
+    #     pass
+    # elif tweet_info["status"] and tweet_info["html"]:
+    else:
+        # 有没有截图不知道，内容信息是真有
+        all_msg = await get_tweet_context(tweet_info,user_name,line_new_tweet_id)
+            
+        # 准备发送消息
+        if config_dev.twitter_node:
+            # 以合并方式发送
+            msg = []
+            for value in  all_msg:
+                msg.append(
+                    MessageSegment.node_custom(
+                        user_id=config_dev.twitter_qq,
+                        nickname=twitter_list[user_name]["screen_name"],
+                        content=Message(value)
+                    )
+                )
+            if not config_dev.twitter_no_text:
+                # 开启了媒体文字
+                for x in tweet_info["text"]:
+                    msg.append(MessageSegment.node_custom(
+                        user_id=config_dev.twitter_qq,
+                        nickname=twitter_list[user_name]["screen_name"],
+                        content=
+                        Message(x)
+                    ))
+            # 发送合并消息    
+            await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
+        else:
+            # 以直接发送的方式
+            if all_msg[-1].type == "video":
+                # 有视频先发视频
+                video_msg = all_msg.pop()
+                # msg = []
+                # msg.append(
+                #     MessageSegment.node_custom(
+                #         user_id=config_dev.twitter_qq,
+                #         nickname=twitter_list[user_name]["screen_name"],
+                #         content=Message(video_msg)
+                #     )
+                # )
+                # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg),"video")
+                await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(video_msg),"video")
+            if not config_dev.twitter_no_text:    
+                # 开启了媒体文字
+                all_msg.append(MessageSegment.text('\n\n'.join(tweet_info["text"])))
+            # 剩余部分直接发送
+            await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(all_msg),"direct")
+            
+            
+        # 更新本地缓存
+        twitter_list[user_name]["since_id"] = line_new_tweet_id
+        dirpath.write_text(json.dumps(twitter_list))
+        return True
+    
+    
+async def tweet_handle_link(tweet_info: dict,user_name: str,line_new_tweet_id: str):
+    if not tweet_info["status"] and not tweet_info["html"]:
+        # 啥都没获取到
+        logger.warning(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
+        return Message(f"{user_name} 的推文 {line_new_tweet_id} 获取失败")
+    elif not tweet_info["status"] and tweet_info["html"]:
+        # 起码有个截图
+        logger.debug(f"{user_name} 的推文 {line_new_tweet_id} 获取失败，但截图成功，准备发送截图")
+        msg = []
+        if config_dev.twitter_htmlmode:
+            # 有截图
+            bytes_size = sys.getsizeof(tweet_info["html"]) / (1024 * 1024)
+            msg.append(MessageSegment.image(tweet_info["html"]))
+            if config_dev.twitter_node:
+                # 合并转发
+                msg.append(MessageSegment.node_custom(
+                    user_id=config_dev.twitter_qq,
+                    nickname=user_name,
+                    content=Message(MessageSegment.image(tweet_info["html"]))
+                ))
+                # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
+            
+            return Message(msg)
+        return Message("")
+    # elif tweet_info["status"] and not tweet_info["html"]:
+    #     # 只没有截图？不应该啊
+    #     pass
+    # elif tweet_info["status"] and tweet_info["html"]:
+    else:
+        # 有没有截图不知道，内容信息是真有
+        all_msg = await get_tweet_context(tweet_info,user_name,line_new_tweet_id)
+            
+        # 准备发送消息
+        if config_dev.twitter_node:
+            # 以合并方式发送
+            msg = []
+            for value in  all_msg:
+                msg.append(
+                    MessageSegment.node_custom(
+                        user_id=config_dev.twitter_qq,
+                        nickname=user_name,
+                        content=Message(value)
+                    )
+                )
+            if not config_dev.twitter_no_text:
+                # 开启了媒体文字
+                for x in tweet_info["text"]:
+                    msg.append(MessageSegment.node_custom(
+                        user_id=config_dev.twitter_qq,
+                        nickname=user_name,
+                        content=
+                        Message(x)
+                    ))
+            # 发送合并消息    
+            # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(msg))
+            return Message(msg)
+        else:
+            # 以直接发送的方式
+            if all_msg[-1].type == "video":
+                # 有视频先发视频
+                video_msg = all_msg.pop()
+                # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(video_msg),"video")
+            if not config_dev.twitter_no_text:    
+                # 开启了媒体文字
+                all_msg.append(MessageSegment.text('\n\n'.join(tweet_info["text"])))
+            # 剩余部分直接发送
+            # await send_msg(twitter_list,user_name,line_new_tweet_id,tweet_info,Message(all_msg),"direct")
+            return Message(all_msg)
