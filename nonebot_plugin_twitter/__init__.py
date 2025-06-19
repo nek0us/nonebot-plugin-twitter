@@ -299,63 +299,63 @@ async def twitter_status_handle(bot:Bot,event: MessageEvent,matcher: Matcher,arg
     except Exception as e:
         await matcher.finish(f"异常:{e}")
 
-# pat_twitter = on_regex(r'(twitter\.com|x\.com)/[a-zA-Z0-9_]+/status/\d+',priority=plugin_config.command_priority)
-# @pat_twitter.handle()
-# async def pat_twitter_handle(bot: Bot,event: MessageEvent,matcher: Matcher,text: str = RegexStr()):
-#     logger.info(f"检测到推文链接 {text}")
-#     link_list = json.loads(linkpath.read_text("utf8"))
-#     playwright,browser = await create_browser()
-#     try:
-#         if isinstance(event,GroupMessageEvent):
-#             # 是群，处理一下先
-#             if str(event.group_id) not in link_list:
-#                 link_list[str(event.group_id)] = {"link":True}
-#                 linkpath.write_text(json.dumps(link_list))
+pat_twitter = on_regex(r'(twitter\.com|x\.com)/[a-zA-Z0-9_]+/status/\d+',priority=plugin_config.command_priority)
+@pat_twitter.handle()
+async def pat_twitter_handle(bot: Bot,event: MessageEvent,matcher: Matcher,text: str = RegexStr()):
+    logger.info(f"检测到推文链接 {text}")
+    link_list = json.loads(linkpath.read_text("utf8"))
+    playwright,browser = await create_browser()
+    try:
+        if isinstance(event,GroupMessageEvent):
+            # 是群，处理一下先
+            if str(event.group_id) not in link_list:
+                link_list[str(event.group_id)] = {"link":True}
+                linkpath.write_text(json.dumps(link_list))
             
-#             if not link_list[str(event.group_id)]["link"]:
-#                 # 关闭了链接识别
-#                 logger.info(f"根据群设置，不获取推文链接内容 {text}")
-#                 await matcher.finish()
-#         # 处理完了 继续
+            if not link_list[str(event.group_id)]["link"]:
+                # 关闭了链接识别
+                logger.info(f"根据群设置，不获取推文链接内容 {text}")
+                await matcher.finish()
+        # 处理完了 继续
         
-#         # x.com/username/status/tweet_id     
-#         tmp = text.split("/")
-#         user_name = tmp[1]
-#         tweet_id = tmp[-1]
+        # x.com/username/status/tweet_id     
+        tmp = text.split("/")
+        user_name = tmp[1]
+        tweet_id = tmp[-1]
         
-#         tweet_info = await get_tweet(browser,user_name,tweet_id)
-#         msg = await tweet_handle_link(tweet_info,user_name,tweet_id)
-#         if plugin_config.twitter_node:
-#             if isinstance(event,GroupMessageEvent):
-#                 await bot.send_group_forward_msg(group_id=int(event.group_id), messages=msg)
-#             else:
-#                 await bot.send_private_forward_msg(user_id=int(event.user_id), messages=msg)
-#         else:
-#             await matcher.send(msg, reply_message=True)
-#     except FinishedException:
-#         pass            
-#     except Exception as e:
-#         await matcher.send(f"异常:{e}")
-#     finally:
-#         await browser.close()
-#         await playwright.stop()
-#         await matcher.finish()
+        tweet_info = await get_tweet(browser,user_name,tweet_id)
+        msg = await tweet_handle_link(tweet_info,user_name,tweet_id)
+        if plugin_config.twitter_node:
+            if isinstance(event,GroupMessageEvent):
+                await bot.send_group_forward_msg(group_id=int(event.group_id), messages=msg)
+            else:
+                await bot.send_private_forward_msg(user_id=int(event.user_id), messages=msg)
+        else:
+            await matcher.send(msg, reply_message=True)
+    except FinishedException:
+        pass            
+    except Exception as e:
+        await matcher.send(f"异常:{e}")
+    finally:
+        await browser.close()
+        await playwright.stop()
+        await matcher.finish()
         
-# twitter_link = on_command("推文链接识别",priority=plugin_config.command_priority)
-# @twitter_link.handle()
-# async def twitter_link_handle(event: GroupMessageEvent,matcher: Matcher,arg: Message = CommandArg()):
-#     link_list = json.loads(linkpath.read_text("utf8"))
-#     if str(event.group_id) not in link_list:
-#         link_list[str(event.group_id)] = {"link":True}
-#         linkpath.write_text(json.dumps(link_list))
-#     if "开启" in arg.extract_plain_text():
-#         link_list[str(event.group_id)]["link"] = True
-#     elif "关闭" in arg.extract_plain_text():
-#         link_list[str(event.group_id)]["link"] = False
-#     else:
-#         await matcher.finish("仅支持“开启”和“关闭”操作")
-#     linkpath.write_text(json.dumps(link_list))    
-#     await matcher.finish(f"推文链接识别已{arg.extract_plain_text()}")
+twitter_link = on_command("推文链接识别",priority=plugin_config.command_priority)
+@twitter_link.handle()
+async def twitter_link_handle(event: GroupMessageEvent,matcher: Matcher,arg: Message = CommandArg()):
+    link_list = json.loads(linkpath.read_text("utf8"))
+    if str(event.group_id) not in link_list:
+        link_list[str(event.group_id)] = {"link":True}
+        linkpath.write_text(json.dumps(link_list))
+    if "开启" in arg.extract_plain_text():
+        link_list[str(event.group_id)]["link"] = True
+    elif "关闭" in arg.extract_plain_text():
+        link_list[str(event.group_id)]["link"] = False
+    else:
+        await matcher.finish("仅支持“开启”和“关闭”操作")
+    linkpath.write_text(json.dumps(link_list))    
+    await matcher.finish(f"推文链接识别已{arg.extract_plain_text()}")
     
 twitter_timeline = on_command("推文列表",priority=plugin_config.command_priority)
 @twitter_timeline.handle()
