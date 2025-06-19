@@ -1,27 +1,16 @@
 from pydantic import BaseModel, root_validator,validator
-from typing import Literal, Optional, TypedDict
-from playwright._impl._api_structures import ProxySettings
+from typing import Literal, Optional
+from typing_extensions import TypedDict
 from nonebot.log import logger
-from nonebot import get_driver
+from nonebot import get_driver, get_plugin_config
 import sys
 
-if sys.version_info < (3, 10):
-    from importlib_metadata import version
-else:
-    from importlib.metadata import version
-
-try:
-    __version__ = version("nonebot_plugin_twitter")
-except Exception:
-    __version__ = None
 
 class Config(BaseModel):
     # 自定义镜像站
     twitter_website: Optional[str] = ""
     # 代理
     twitter_proxy: Optional[str] = None
-    # playwright 代理
-    twitter_pywt_proxy: Optional[ProxySettings] = None
     # 内部当前使用url
     twitter_url: Optional[str] = ""
     # 自定义转发消息来源qq
@@ -38,83 +27,12 @@ class Config(BaseModel):
     twitter_no_text: bool = False
     # 使用转发消息
     twitter_node: bool = True
-    
-    
-    @validator("twitter_website")
-    def check_twitter_website(cls,v):
-        if isinstance(v,str):
-            logger.info(f"twitter_website {v} 读取成功")
-            return v
-    @validator("twitter_proxy")
-    def check_proxy(cls,v):
-        if isinstance(v,str):
-            logger.info(f"twitter_proxy {v} 读取成功")
-            return v
-    @validator("twitter_qq")
-    def check_twitter_qq(cls,v):
-        if isinstance(v,int):
-            logger.info(f"twitter_qq {v} 读取成功")
-            return v
-        
-    @validator("command_priority")
-    def check_command_priority(cls,v):
-        if isinstance(v,int) and v >= 1:
-            logger.info(f"command_priority {v} 读取成功")
-            return v
-        
-    @validator("twitter_original")
-    def check_twitter_original(cls,v):
-        if isinstance(v,bool):
-            logger.info(f"twitter_original 使用twitter官方页面截图 {'已开启' if v else '已关闭'}")
-            return v     
-        
-    @validator("twitter_htmlmode")
-    def check_twitter_htmlmode(cls,v):
-        if isinstance(v,bool):
-            logger.info(f"twitter_htmlmode 网页截图模式 {'已开启' if v else '已关闭'}")
-            return v             
-        
-    @validator("twitter_no_text")
-    def check_twitter_no_text(cls,v):
-        if isinstance(v,bool):
-            logger.info(f"twitter_no_text 媒体无文字 {'已开启' if v else '已关闭'}")
-            return v     
-        
-    @validator("twitter_node")
-    def check_twitter_node(cls,v):
-        if isinstance(v,bool):
-            logger.info(f"twitter_node 合并转发消息  {'已开启' if v else '已关闭'}")
-            return v        
-        
-    @root_validator(pre=False)
-    def set_twitter_pywt_proxy(cls, values):
-        twitter_proxy = values.get('twitter_proxy')
-        values['twitter_pywt_proxy'] = {"server": twitter_proxy} if twitter_proxy else None
-        return values
            
-config_dev = Config.parse_obj(get_driver().config)
+plugin_config = get_plugin_config(Config)
 
 website_list = [
-    "https://nitter.mint.lgbt",
-    "https://nitter.uni-sonia.com",
+    "https://nitter.net", # 403
     "https://nitter.poast.org",
-    "https://nitter.privacydev.net",
-    "https://nitter.salastil.com",
-    "https://nitter.d420.de",
-    "https://nitter.1d4.us",
-    "https://nitter.moomoo.me"
-    "https://n.opnxng.com",
-    
-    # "https://n.biendeo.com", # 很慢
-    # "https://nitter.catsarch.com", # 很慢
-    # "https://nitter.net", # 403
-    # "https://nitter.dafriser.be", # 502
-    # "https://nitter.woodland.cafe", # 403
-    # "https://nitter.x86-64-unknown-linux-gnu.zip", # 403
-    # "https://bird.trom.tf", # 寄
-    # "https://nitter.unixfox.eu", # 403
-    # "https://nitter.it", # 404
-    # "https://twitter.owacon.moe", # 301
     
 ]
 
