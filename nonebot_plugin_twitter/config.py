@@ -12,7 +12,9 @@ class Config(BaseModel):
     # 代理
     twitter_proxy: Optional[str] = None
     # 内部当前使用url
-    twitter_url: Optional[str] = ""
+    twitter_url: Optional[str] = "https://x.com/"
+    # 内部当前使用url
+    twitter_img_url: Optional[str] = "https://pbs.twimg.com/media/"
     # 自定义转发消息来源qq
     twitter_qq: int = 2854196310
     # 自定义事件响应等级
